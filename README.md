@@ -39,17 +39,25 @@ Nos topos a velocidade é zero, então a energia é só potencial. Considerei qu
 
 ## Como rodar (Windows)
 
-1. Instalar a raylib pelo instalador de raylib.com, deixando em C:\raylib.
-2. Abrir C:\raylib\w64devkit\w64devkit.exe.
-3. Ir até a pasta do projeto e compilar:
+O programa já está compilado e pronto para execução, não sendo necessário instalar a Raylib ou utilizar um compilador.
+1 - Abra o terminal na pasta do projeto.
+2 - Execute o comando:
+    ./Simulador.exe
+Também é possível executar o programa diretamente, dando dois cliques no arquivo Simulador.exe.
 
-```
-gcc main.c -o montanha.exe -lraylib -lgdi32 -lwinmm -lm
-```
+## Como recompilar (caso altere o código)
+Se alguma alteração for feita no código-fonte, será necessário compilar o programa novamente:
 
-4. Executar com `./montanha.exe`.
+1 - Instale a Raylib pelo instalador disponível em raylib.com, mantendo o diretório C:\raylib.
+2 - Abra C:\raylib\w64devkit\w64devkit.exe.
+3 - Acesse a pasta do projeto e execute:
+    gcc main.c -o Simulador.exe -lraylib -lgdi32 -lwinmm -lm
 
-No jogo, digite os números e aperte ENTER para confirmar. Backspace apaga e ESC fecha.
+## Controles:
+Números: inserir os valores solicitados.
+ENTER: confirmar.
+BACKSPACE: apagar caracteres.
+ESC: fechar o programa.
 
 ## Exemplo
 
