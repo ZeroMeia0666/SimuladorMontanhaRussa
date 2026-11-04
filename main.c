@@ -62,11 +62,91 @@ static const char *RODAPE = "ENTER confirma  |  ESC sai";
 
 
 static float carro_x, carro_y;
-
+static float carro_angulo = 0.0f;
+static void desenhar_carrinho(void);
 static float ponto_y(int k)
 {
     return 440.0f - FATOR[k] * 200.0f;
 }
+
+/* Calcula a posicao sobre a curva de Bezier */
+static Vector2 posicao_curva(int trecho, float t)
+{
+    Vector2 p0 = { PX[trecho], ponto_y(trecho) };
+    Vector2 p3 = { PX[trecho + 1], ponto_y(trecho + 1) };
+
+    float dx = p3.x - p0.x;
+
+    Vector2 p1 = { p0.x + dx * 0.5f, p0.y };
+    Vector2 p2 = { p3.x - dx * 0.5f, p3.y };
+
+    float u = 1.0f - t;
+
+    Vector2 resultado;
+
+    resultado.x =
+        u*u*u*p0.x +
+        3*u*u*t*p1.x +
+        3*u*t*t*p2.x +
+        t*t*t*p3.x;
+
+    resultado.y =
+        u*u*u*p0.y +
+        3*u*u*t*p1.y +
+        3*u*t*t*p2.y +
+        t*t*t*p3.y;
+
+    return resultado;
+}
+
+/* Calcula a inclinacao da pista em graus */
+static float angulo_curva(int trecho, float t)
+{
+    float antes = t - 0.001f;
+    float depois = t + 0.001f;
+
+    if (antes < 0.0f) antes = 0.0f;
+    if (depois > 1.0f) depois = 1.0f;
+
+    Vector2 p1 = posicao_curva(trecho, antes);
+    Vector2 p2 = posicao_curva(trecho, depois);
+
+    float dx = p2.x - p1.x;
+    float dy = p2.y - p1.y;
+
+    return atan2f(dy, dx) * RAD2DEG;
+}
+
+
+static void desenhar_pista(void)
+{
+    DrawLineEx(
+        (Vector2){30, ponto_y(0)},
+        (Vector2){PX[0], ponto_y(0)},
+        5,
+        DARKGRAY
+    );
+
+    for (int k = 0; k < N_PONTOS - 1; k++)
+    {
+        Color cor = (k == 2 || k == 7)
+                    ? ORANGE : DARKGRAY;
+
+        Vector2 anterior = posicao_curva(k, 0.0f);
+
+        for (int i = 1; i <= 80; i++)
+        {
+            float t = (float)i / 80.0f;
+
+            Vector2 atual = posicao_curva(k, t);
+
+            DrawLineEx(anterior, atual, 5, cor);
+
+            anterior = atual;
+        }
+    }
+}
+
 
 static void desenhar_cena(const char *rotulo, const char *digitado)
 {
@@ -78,21 +158,13 @@ static void desenhar_cena(const char *rotulo, const char *digitado)
 
     DrawText("Simulador de Montanha-Russa 2D", 30, 14, 28, BLACK);
 
-    DrawLineEx((Vector2){ 30, ponto_y(0) }, (Vector2){ PX[0], ponto_y(0) }, 5, DARKGRAY);
-    for (k = 0; k < N_PONTOS - 1; k++) {
-        Color cor = (k == 2 || k == 7) ? ORANGE : DARKGRAY;
-        DrawLineEx((Vector2){ PX[k], ponto_y(k) }, (Vector2){ PX[k + 1], ponto_y(k + 1) }, 5, cor);
-    }
+    desenhar_pista();
 
-    for (k = 0; k < N_PONTOS; k++) {
-        nome[0] = NOMES[k];
-        DrawCircle((int)PX[k], (int)ponto_y(k), 4, MAROON);
-        DrawText(nome, (int)PX[k] - 6, (int)ponto_y(k) + (FATOR[k] > 0 ? -54 : 12), 22, BLACK);
-    }
+    
     DrawText("FREIO", 505, 290, 16, ORANGE);
     DrawText("FREIO", 1030, 385, 16, ORANGE);
 
-    DrawCircle((int)carro_x, (int)carro_y - 12, 12, RED);
+   desenhar_carrinho();
 
     DrawRectangle(20, 480, LARGURA - 40, 205, (Color){ 240, 244, 250, 255 });
     DrawRectangleLines(20, 480, LARGURA - 40, 205, DARKGRAY);
@@ -112,6 +184,58 @@ static void desenhar_cena(const char *rotulo, const char *digitado)
 
     EndDrawing();
 }
+
+
+static Vector2 girar_ponto(Vector2 p, float angulo)
+{
+    float rad = angulo * DEG2RAD;
+
+    Vector2 resultado = {
+        p.x * cosf(rad) - p.y * sinf(rad),
+        p.x * sinf(rad) + p.y * cosf(rad)
+    };
+
+    return resultado;
+}
+
+static void desenhar_carrinho(void)
+{
+    Vector2 centro = {carro_x, carro_y - 17};
+
+    Rectangle corpo = {
+        centro.x,
+        centro.y,
+        38,
+        20
+    };
+
+    DrawRectanglePro(
+        corpo,
+        (Vector2){19, 10},
+        carro_angulo,
+        RED
+    );
+
+    Vector2 roda1 = girar_ponto(
+        (Vector2){-12, 10},
+        carro_angulo
+    );
+
+    Vector2 roda2 = girar_ponto(
+        (Vector2){12, 10},
+        carro_angulo
+    );
+
+    roda1.x += centro.x;
+    roda1.y += centro.y;
+
+    roda2.x += centro.x;
+    roda2.y += centro.y;
+
+    DrawCircleV(roda1, 5, BLACK);
+    DrawCircleV(roda2, 5, BLACK);
+}
+
 
 static void checar_janela(void)
 {
@@ -153,21 +277,32 @@ static void esperar_enter(void)
     }
 }
 
+
 static void mover(int de, int para)
 {
     float t = 0.0f;
 
     TITULO = "Carrinho em movimento";
 
-    while (t < 1.0f) {
+    while (t < 1.0f)
+    {
         t += GetFrameTime() / 1.5f;
-        if (t > 1.0f) t = 1.0f;
-        carro_x = PX[de] + (PX[para] - PX[de]) * t;
-        carro_y = ponto_y(de) + (ponto_y(para) - ponto_y(de)) * t;
+
+        if (t > 1.0f)
+            t = 1.0f;
+
+        Vector2 pos = posicao_curva(de, t);
+
+        carro_x = pos.x;
+        carro_y = pos.y;
+
+        carro_angulo = angulo_curva(de, t);
+
         desenhar_cena(NULL, NULL);
         checar_janela();
     }
 }
+
 
 static double ajuste(const char *titulo, const char *grandeza, const char *unidade,
                      double exato, const char *motivo_maior, const char *motivo_menor)
@@ -177,7 +312,7 @@ static double ajuste(const char *titulo, const char *grandeza, const char *unida
     double digitado, erro;
     char rotulo[100];
 
-    TITULO = titulo;
+    TITULO = titulo; 
     snprintf(L1, sizeof L1, "Valores possiveis: de %.3f a %.3f %s", minimo, maximo, unidade);
     snprintf(L2, sizeof L2, "Dentro de %.0f%% do valor correto o jogo ajusta para o valor exato; fora disso, fim de jogo.",
              TOLERANCIA * 100.0);
